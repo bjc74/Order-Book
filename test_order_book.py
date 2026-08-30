@@ -12,7 +12,7 @@ def test_unmatched_buy_order_rests_on_book():
     )
     book.submit_order(order)
     assert len(book.bids) == 1
-    assert book.bids[0][2] == order
+    assert book.get_best_bid() == order
     assert len(book.asks) == 0
 def test_unmatched_sell_order_rests_on_book():
     book = OrderBook()
@@ -26,7 +26,7 @@ def test_unmatched_sell_order_rests_on_book():
     book.submit_order(order)
     assert len(book.bids) == 0
     assert len(book.asks) == 1
-    assert book.asks[0][2] == order
+    assert book.get_best_ask() == order
 def test_get_best_bids_when_empty():
     book = OrderBook()
     order = Order(
@@ -293,7 +293,8 @@ def test_multi_level_sweep():
     assert len(book.asks) == 2
     assert best_ask.price == 100
     assert best_ask.quantity == 1
-    assert book.asks[1][2] == order3
+    assert 110 in book.ask_levels
+    assert book.ask_levels[110][0] == order3
 def test_trade_history():
      book = OrderBook()
      order1 = Order(
@@ -508,3 +509,75 @@ def test_empty_book_produces_nothing():
      book.submit_order(order)
      assert len(book.trades) == 0
      assert len(book.bids) == 0
+def test_cancelled_order_behind_live_order_buy():
+     book = OrderBook()
+     order1 = Order(
+          order_id = '1',
+          side = 'sell',
+          price = 90,
+          quantity = 100,
+     )
+     order2 = Order(
+               order_id = '2',
+               side = 'sell',
+               price = 100,
+               quantity = 100,
+          )
+     order3 = Order(
+               order_id = '3',
+               side = 'sell',
+               price = 110,
+               quantity = 100,
+          )
+     order4 = Order(
+               order_id = '4',
+               side = 'buy',
+               price = 110,
+               quantity = 150,
+          )
+     book.submit_order(order1)
+     book.submit_order(order2)
+     book.submit_order(order3)
+     book.cancel_order('2')
+     book.submit_order(order4)
+     trade_history = book.trades
+     assert trade_history[0]['sell_order'] == '1'
+     assert trade_history[1]['sell_order'] == '3'
+     assert book.get_best_ask().order_id == '3'
+     assert book.get_best_ask().quantity == 50
+def test_cancelled_order_behind_live_order_sell():
+     book = OrderBook()
+     order1 = Order(
+          order_id = '1',
+          side = 'buy',
+          price = 110,
+          quantity = 100,
+     )
+     order2 = Order(
+               order_id = '2',
+               side = 'buy',
+               price = 100,
+               quantity = 100,
+          )
+     order3 = Order(
+               order_id = '3',
+               side = 'buy',
+               price = 90,
+               quantity = 100,
+          )
+     order4 = Order(
+               order_id = '4',
+               side = 'sell',
+               price = 80,
+               quantity = 150,
+          )
+     book.submit_order(order1)
+     book.submit_order(order2)
+     book.submit_order(order3)
+     book.cancel_order('2')
+     book.submit_order(order4)
+     trade_history = book.trades
+     assert trade_history[0]['buy_order'] == '1'
+     assert trade_history[1]['buy_order'] == '3'
+     assert book.get_best_bid().order_id == '3'
+     assert book.get_best_bid().quantity == 50
