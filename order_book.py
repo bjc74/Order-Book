@@ -90,7 +90,32 @@ class OrderBook:
             return False
         order.cancelled = True
         del self.orders[order_id]
-
+    def amend_order(self, order_id, price, quantity):
+        order = self.orders.get(order_id)
+        if order is None:
+            raise Exception('Order ID does not exist')
+        if order.cancelled:
+            raise Exception('Order is cancelled')
+        if price <= 0:
+            raise Exception('Price must be greater than 0')
+        if quantity <=0:
+            raise Exception('Quantity must be greater than 0')
+        old_price = order.price
+        old_quantity = order.quantity
+        side = order.side
+        if quantity < old_quantity and old_price == price:
+            order.quantity = quantity
+        else:
+            self.cancel_order(order_id)
+            new_order = Order(
+            order_id=order_id,
+            side=side,
+            price=price,
+            quantity=quantity,
+            )
+            self.submit_order(new_order)
+            
+        
     def get_best_bid(self):
         while self.bids:
             best_price = -self.bids[0]
@@ -117,8 +142,28 @@ class OrderBook:
                 continue
 
             return queue[0]
-
         return None
-        
-    
+    def get_depth(self, side, levels):
+        output = []    
+        if side == 'ask':
+            prices = sorted(self.ask_levels.keys())
+            for price in prices:
+                quantity = sum(order.quantity for order in self.ask_levels[price]if not order.cancelled)
+
+                if quantity > 0:
+                    output.append((price, quantity))
+
+                if len(output) == levels:
+                    break
+        elif side == 'bid':
+            for price in prices:
+                prices = sorted(self.bid_levels.keys(), reverse=True)
+                quantity = sum(order.quantity for order in self.bid_levels[price] if not order.cancelled)
+                if quantity > 0:
+                    output.append((price, quantity))
+                if len(output) == levels:
+                    break
+        else:
+            return Exception('Side must be bid or ask')
+        return output
     

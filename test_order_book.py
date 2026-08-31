@@ -581,3 +581,94 @@ def test_cancelled_order_behind_live_order_sell():
      assert trade_history[1]['buy_order'] == '3'
      assert book.get_best_bid().order_id == '3'
      assert book.get_best_bid().quantity == 50
+def test_cancelled_price_level_not_included():
+          book = OrderBook()
+          order1 = Order(
+          order_id = '1',
+          side = 'sell',
+          price = 100,
+          quantity = 100,
+          )
+          order2 = Order(
+               order_id = '2',
+               side = 'sell',
+               price = 120,
+               quantity = 100,
+          )
+          order3 = Order(
+               order_id = '3',
+               side = 'sell',
+               price = 100,
+               quantity = 120,
+          )
+          order4 = Order(
+               order_id = '4',
+               side = 'sell',
+               price = 130,
+               quantity = 150,
+          )
+          book.submit_order(order1)
+          book.submit_order(order2)
+          book.submit_order(order3)
+          book.submit_order(order4)
+          book.cancel_order('1')
+          book.cancel_order('3')
+          depth = book.get_depth('ask', 2)
+          assert depth[0] == (120,100)
+          assert depth[1] == (130,150)
+def test_amend_increase_quantity_loses_priority():
+    book = OrderBook()
+
+    order1 = Order(
+        order_id='1',
+        side='sell',
+        price=100,
+        quantity=100,
+    )
+    order2 = Order(
+        order_id='2',
+        side='sell',
+        price=100,
+        quantity=100,
+    )
+
+    book.submit_order(order1)
+    book.submit_order(order2)
+
+    book.amend_order('1', price=100, quantity=150)
+
+    active = [
+        order for order in book.ask_levels[100]
+        if not order.cancelled
+    ]
+
+    assert [order.order_id for order in active] == ['2', '1']
+    assert active[1].quantity == 150
+def test_amend_decrease_quantity_keeps_priority():
+    book = OrderBook()
+
+    order1 = Order(
+        order_id='1',
+        side='sell',
+        price=100,
+        quantity=100,
+    )
+    order2 = Order(
+        order_id='2',
+        side='sell',
+        price=100,
+        quantity=100,
+    )
+
+    book.submit_order(order1)
+    book.submit_order(order2)
+
+    book.amend_order('1', price=100, quantity=60)
+
+    active = [
+        order for order in book.ask_levels[100]
+        if not order.cancelled
+    ]
+
+    assert [order.order_id for order in active] == ['1', '2']
+    assert active[0].quantity == 60
