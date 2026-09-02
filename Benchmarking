@@ -1,0 +1,53 @@
+import random
+import time
+from order import Order
+from order_book import OrderBook
+import cProfile
+def benchmark_crossing(N):
+    random.seed(67)
+    book  = OrderBook()
+    orders = []
+    for i in range(N):
+        orders.append(Order(
+            order_id=str(i),
+            side=random.choice(['buy', 'sell']),
+            price=random.randint(95, 105),
+            quantity=random.randint(1, 100),
+        ))
+    start = time.perf_counter()
+    for order in orders:
+        book.submit_order(order)
+    elapsed = time.perf_counter() - start
+    return N / elapsed
+def benchmark_deep_book(N):
+    random.seed(67)
+    book = OrderBook()
+    orders = []
+    for i in range(N):
+        side = random.choice(["buy", "sell"])
+
+        if side == "buy":
+            price = random.randint(1, 50)
+        else:
+            price = random.randint(100, 150)
+        orders.append(Order(
+            order_id=str(i),
+            side = side,
+            price = price,
+            quantity= random.randint(1,100)
+        ))
+    start = time.perf_counter()
+    for order in orders:
+        book.submit_order(order)
+    elapsed = time.perf_counter() - start
+    return N / elapsed
+
+cProfile.run('benchmark_crossing(1000000)', sort='cumtime')
+'''
+for N in [100000, 500000, 1000000]:
+    results = [benchmark_crossing(N) for _ in range(5)]
+    print(N,'crossing orders', results)
+    results = [benchmark_deep_book(N) for _ in range(5)]
+    print(N, 'deep book', results)
+    '''
+    
