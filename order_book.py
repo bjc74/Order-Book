@@ -146,8 +146,8 @@ class OrderBook:
     def get_depth(self, side, levels):
         output = []    
         if side == 'ask':
-            prices = sorted(self.ask_levels.keys())
             for price in prices:
+                prices = sorted(self.ask_levels.keys())
                 quantity = sum(order.quantity for order in self.ask_levels[price]if not order.cancelled)
 
                 if quantity > 0:
